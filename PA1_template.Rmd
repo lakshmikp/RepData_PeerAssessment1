@@ -7,19 +7,108 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r, echo=TRUE}
+rawData <- read.csv(unz(".//activity.zip", "activity.csv"),stringsAsFactors=FALSE)
+```
 
 
+## Mean total number of steps taken per day
+```{r, echo=TRUE}
+aggregate.date = aggregate(rawData$steps ~ rawData$date, FUN = sum, na.action=na.omit)
+names(aggregate.date)[1] <- "date"
+names(aggregate.date)[2] <- "steps"
+aggregate.date
 
-## What is mean total number of steps taken per day?
+# Create histogram
+hist(aggregate.date$steps, main="Histogram of total steps taken each day", xlab="Total steps taken each day", col="grey")
 
+#Find mean of total steps each day
+mean(aggregate.date$steps)
 
+#Find median of total steps each day
+median(aggregate.date$steps)
+```
 
 ## What is the average daily activity pattern?
+```{r, echo=TRUE}
+aggregate.interval = aggregate(rawData$steps ~ rawData$interval, FUN = mean, na.action=na.omit)
+names(aggregate.interval)[1] <- "interval"
+names(aggregate.interval)[2] <- "steps"
+aggregate.interval
 
+# Time series plot
+plot(x=aggregate.interval$interval, y=aggregate.interval$steps, type="l", ylab="Average number of steps taken", xlab="Interval", main="Time series plot")
 
+# Finding which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps
+aggregate.interval$interval[aggregate.interval$steps == max(aggregate.interval$steps)]
+
+```
 
 ## Imputing missing values
 
 
+```{r, echo=TRUE}
+# Total number of rows with missing values
+sum(is.na(rawData$steps))
+```
+
+### Strategy for filling in the missing values
+We will use the mean for the 5-minute interval to fill in the missing values.
+
+```{r, echo=TRUE}
+
+# Fill in the missing values
+newData <- rawData
+for (i in 1:nrow(newData)) { 
+    if (is.na(newData$steps[i])){
+      interval = newData$interval[i] 
+      newValue = aggregate.interval$steps[which(aggregate.interval$interval == interval)]
+      
+      #newValue = aggregate.date$steps[which(aggregate.date$date == newData$date[i])]
+      if (is.null(newValue)){
+      newData$steps[i] = newValue
+      }else{
+        newData$steps[i] = 0
+      }
+        
+      
+    }
+}
+
+```
+### Revised Mean total number of steps taken per day
+```{r, echo=TRUE}
+new.aggregate.date = aggregate(newData$steps ~ newData$date, FUN = sum)
+names(new.aggregate.date)[1] <- "date"
+names(new.aggregate.date)[2] <- "steps"
+```
+```{r, echo=TRUE}
+# Create histogram
+hist(new.aggregate.date$steps, main="Histogram of total steps taken each day", xlab="Total steps taken each day", col="grey")
+
+#Find mean of total steps each day
+mean(new.aggregate.date$steps)
+
+#Find median of total steps each day
+median(new.aggregate.date$steps)
+```
+### Impact of imputing missing data
+The estimates of the total steps is different from the earlier set of values. The estimates of the total daily number of steps have decreased as a result of imputing missing data.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r, echo=TRUE}
+
+# Add a new column 'day' to indicate if weekend or weekday
+newData$day <- ifelse( (weekdays(as.Date(newData$date)) %in% c("Saturday", "Sunday")),"Weekend", "Weekday")
+
+# Create a panel plot
+aggregate.intervalbyDays <- aggregate(data=newData, steps~interval+day, FUN=mean)
+library(lattice)
+xyplot(steps~interval|day,aggregate.intervalbyDays,type = "l", layout=c(1,2), xlab="Interval", ylab="Number of steps", main="Panel plot")
+
+```
+  
+**The average number of steps taken is higher in weekends as compared to weekdays.**
+
+
+
